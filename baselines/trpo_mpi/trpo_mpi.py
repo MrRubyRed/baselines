@@ -9,6 +9,8 @@ from collections import deque
 from baselines.common.mpi_adam import MpiAdam
 from baselines.common.cg import cg
 from contextlib import contextmanager
+import pickle
+import datetime
 
 def traj_segment_generator(pi, env, horizon, stochastic):
     # Initialize state variables
@@ -88,7 +90,9 @@ def learn(env, policy_func, *,
         vf_stepsize=3e-4,
         vf_iters =3,
         max_timesteps=0, max_episodes=0, max_iters=0,  # time constraint
-        callback=None
+        callback=None,
+        dumpfile="/home/vrubies/Research/baselines/baselines/trpo_mpi/experiments/experiment_"+str(datetime.datetime.now())+".pkl",
+        env_id=None
         ):
     nworkers = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
@@ -185,13 +189,22 @@ def learn(env, policy_func, *,
 
     assert sum([max_iters>0, max_timesteps>0, max_episodes>0])==1
 
+    listofnames = [v.name for v in var_list];
+
     while True:        
         if callback: callback(locals(), globals())
+        #VRR: Modified to save the env_id, the architecture of the policy and the value of the Nn params
         if max_timesteps and timesteps_so_far >= max_timesteps:
+            sess = U.get_session();
+            pickle.dump({"env_id":env_id,"architecture":pi.get_architecture(),"NNparams":sess.run(var_list),"param_names":listofnames},open(dumpfile,mode="wb"));            
             break
         elif max_episodes and episodes_so_far >= max_episodes:
+            sess = U.get_session();
+            pickle.dump({"env_id":env_id,"architecture":pi.get_architecture(),"NNparams":sess.run(var_list),"param_names":listofnames},open(dumpfile,mode="wb"));            
             break
         elif max_iters and iters_so_far >= max_iters:
+            sess = U.get_session();
+            pickle.dump({"env_id":env_id,"architecture":pi.get_architecture(),"NNparams":sess.run(var_list),"param_names":listofnames},open(dumpfile,mode="wb"));
             break
         logger.log("********** Iteration %i ************"%iters_so_far)
 

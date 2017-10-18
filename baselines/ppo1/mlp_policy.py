@@ -11,9 +11,13 @@ class MlpPolicy(object):
             self._init(*args, **kwargs)
             self.scope = tf.get_variable_scope().name
 
-    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True):
+    def _init(self, ob_space, ac_space, hid_size, num_hid_layers, gaussian_fixed_var=True, activation=tf.nn.tanh):
         assert isinstance(ob_space, gym.spaces.Box)
 
+        self.hid_size = hid_size;
+        self.num_hid_layers = num_hid_layers;
+
+        self.activation = str(activation);
         self.pdtype = pdtype = make_pdtype(ac_space)
         sequence_length = None
 
@@ -25,12 +29,13 @@ class MlpPolicy(object):
         obz = tf.clip_by_value((ob - self.ob_rms.mean) / self.ob_rms.std, -5.0, 5.0)
         last_out = obz
         for i in range(num_hid_layers):
-            last_out = tf.nn.tanh(U.dense(last_out, hid_size, "vffc%i"%(i+1), weight_init=U.normc_initializer(1.0)))
+            last_out = activation(U.dense(last_out, hid_size, "vffc%i"%(i+1), weight_init=U.normc_initializer(1.0))) #Changed to take any activation
         self.vpred = U.dense(last_out, 1, "vffinal", weight_init=U.normc_initializer(1.0))[:,0]
 
         last_out = obz
         for i in range(num_hid_layers):
-            last_out = tf.nn.tanh(U.dense(last_out, hid_size, "polfc%i"%(i+1), weight_init=U.normc_initializer(1.0)))
+            last_out = activation(U.dense(last_out, hid_size, "polfc%i"%(i+1), weight_init=U.normc_initializer(1.0))) #Changed to take any activation
+            
         if gaussian_fixed_var and isinstance(ac_space, gym.spaces.Box):
             mean = U.dense(last_out, pdtype.param_shape()[0]//2, "polfinal", U.normc_initializer(0.01))
             logstd = tf.get_variable(name="logstd", shape=[1, pdtype.param_shape()[0]//2], initializer=tf.zeros_initializer())
@@ -38,6 +43,7 @@ class MlpPolicy(object):
         else:
             pdparam = U.dense(last_out, pdtype.param_shape()[0], "polfinal", U.normc_initializer(0.01))
 
+        self.mean = mean; #Used for deterministic dynamics in Lyapunov analysis
         self.pd = pdtype.pdfromflat(pdparam)
 
         self.state_in = []
@@ -56,4 +62,6 @@ class MlpPolicy(object):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
     def get_initial_state(self):
         return []
+    def get_architecture(self):
+        return self.hid_size,self.num_hid_layers,self.activation
 
