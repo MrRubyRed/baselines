@@ -11,6 +11,8 @@ from baselines.common.cg import cg
 from contextlib import contextmanager
 import pickle
 import datetime
+import matplotlib.pyplot as plt
+
 
 def traj_segment_generator(pi, env, horizon, stochastic):
     # Initialize state variables
@@ -91,9 +93,11 @@ def learn(env, policy_func, *,
         vf_iters =3,
         max_timesteps=0, max_episodes=0, max_iters=0,  # time constraint
         callback=None,
-        dumpfile="/home/vrubies/Research/baselines/baselines/trpo_mpi/experiments/experiment_"+str(datetime.datetime.now())+".pkl",
+        dumpfile="/home/vrubies/Research/baselines/baselines/trpo_mpi/experiments/",
         env_id=None
         ):
+    dumpfile = dumpfile + env_id +"_"+str(datetime.datetime.now())+".pkl"
+    
     nworkers = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
     np.set_printoptions(precision=3)    
@@ -216,6 +220,14 @@ def learn(env, policy_func, *,
         ob, ac, atarg, tdlamret = seg["ob"], seg["ac"], seg["adv"], seg["tdlamret"]
         vpredbefore = seg["vpred"] # predicted value function before udpate
         atarg = (atarg - atarg.mean()) / atarg.std() # standardized advantage function estimate
+
+        if iters_so_far % 20:
+            plt.figure(1)
+            plt.clf()
+            plt.scatter(ob[:,[0]],ob[:,[1]])
+            plt.pause(0.1)
+        #norms = np.linalg.norm(ob[:,[0,1]],axis=1)
+        #sprint("Minimum norm: " +  str(min(norms)))
 
         if hasattr(pi, "ret_rms"): pi.ret_rms.update(tdlamret)
         if hasattr(pi, "ob_rms"): pi.ob_rms.update(ob) # update running mean/std for policy

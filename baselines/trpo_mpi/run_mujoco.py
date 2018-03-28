@@ -12,6 +12,9 @@ from baselines.common.mpi_fork import mpi_fork
 from baselines import bench
 from baselines.trpo_mpi import trpo_mpi
 import sys
+import tensorflow as tf
+
+#TODO: Make a new class that take in a ReLU NN model and pretends to be an gym enviroment...
 
 def train(env_id, num_timesteps, seed):
     import baselines.common.tf_util as U
@@ -26,23 +29,23 @@ def train(env_id, num_timesteps, seed):
     env = gym.make(env_id)
     def policy_fn(name, ob_space, ac_space):
         return MlpPolicy(name=name, ob_space=env.observation_space, ac_space=env.action_space,
-            hid_size=32, num_hid_layers=2)
+            hid_size=4, num_hid_layers=2, activation=tf.nn.relu)
     env = bench.Monitor(env, logger.get_dir() and 
         osp.join(logger.get_dir(), "%i.monitor.json" % rank))
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    trpo_mpi.learn(env, policy_fn, timesteps_per_batch=1024, max_kl=0.01, cg_iters=10, cg_damping=0.1,
-        max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3)
+    trpo_mpi.learn(env, policy_fn, timesteps_per_batch=2500, max_kl=0.01, cg_iters=10, cg_damping=0.1,
+        max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3, env_id = env_id)
     env.close()
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env', help='environment ID', default='Hopper-v1')
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
+    parser.add_argument('--env', help='environment ID', default='PointMass-v1')
+    parser.add_argument('--seed', help='RNG seed', type=int, default=1)
     args = parser.parse_args()
-    train(args.env, num_timesteps=1e6, seed=args.seed)
+    train(args.env, num_timesteps=100000, seed=args.seed)
 
 
 if __name__ == '__main__':

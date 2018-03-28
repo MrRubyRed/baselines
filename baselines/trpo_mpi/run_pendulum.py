@@ -33,14 +33,14 @@ def train(env_id, num_timesteps, seed):
     env.seed(workerseed)
     gym.logger.setLevel(logging.WARN)
 
-    trpo_mpi.learn(env, policy_fn, timesteps_per_batch=4000, max_kl=0.01, cg_iters=10, cg_damping=0.1,
+    trpo_mpi.learn(env, policy_fn, timesteps_per_batch=1024, max_kl=0.01, cg_iters=10, cg_damping=0.1,
         max_iters=50, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3, env_id = env_id)
     env.close()
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env', help='environment ID', default='Pendulum-v0')# default='Hopper-v1')
+    parser.add_argument('--env', help='environment ID', default='PointMass-v1')# default='Hopper-v1')
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     args = parser.parse_args()
     train(args.env, num_timesteps=1e6, seed=args.seed)

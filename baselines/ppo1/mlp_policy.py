@@ -46,12 +46,12 @@ class MlpPolicy(object):
         self.mean = mean; #Used for deterministic dynamics in Lyapunov analysis
         self.pd = pdtype.pdfromflat(pdparam)
 
-        self.state_in = []
-        self.state_out = []
-
         stochastic = tf.placeholder(dtype=tf.bool, shape=())
         ac = U.switch(stochastic, self.pd.sample(), self.pd.mode())
         self._act = U.function([stochastic, ob], [ac, self.vpred])
+        
+        self.Jac = tf.stack([tf.gradients(y, ob)[0] for y in tf.unstack(mean, axis=1)],axis=2) #VRR Added
+        self.Jacobian = U.function([ob], [self.Jac])               #VRR Added
 
     def act(self, stochastic, ob):
         ac1, vpred1 =  self._act(stochastic, ob[None])
@@ -64,4 +64,6 @@ class MlpPolicy(object):
         return []
     def get_architecture(self):
         return self.hid_size,self.num_hid_layers,self.activation
+    def get_Jacobian(self, ob):
+        return self.Jacobian(ob)
 

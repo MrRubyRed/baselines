@@ -330,6 +330,16 @@ def dense(x, size, name, weight_init=None, bias=True):
     else:
         return ret
 
+def dense_(x, size, name, weight_init=None, bias=True):
+    inds = [i for i in range(len(size))]
+    w_ = [tf.matmul(tf.get_variable(name+str(s)+str(ss),[x.get_shape()[1], 1], initializer=weight_init),tf.constant(1.0,shape=(1,s))) for s,ss in zip(size,inds)]    
+    w = tf.concat(w_,axis=1,name=name + "/w")
+    ret = tf.matmul(x, w)
+    if bias:
+        b = tf.get_variable(name + "/b", [np.sum(size)], initializer=tf.zeros_initializer())
+        return ret + b
+    else:
+        return ret
 
 def wndense(x, size, name, init_scale=1.0):
     v = tf.get_variable(name + "/V", [int(x.get_shape()[1]), size],
